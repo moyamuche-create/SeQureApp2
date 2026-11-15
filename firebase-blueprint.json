@@ -1,0 +1,157 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with emergency contact information and saved home/business addresses for faster booking",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The unique user ID" },
+        "displayName": { "type": "string", "description": "Full display name" },
+        "email": { "type": "string", "description": "Google account email" },
+        "phoneNumber": { "type": "string", "description": "Optional phone number" },
+        "emergencyContact": { "type": "string", "description": "Formatted emergency contact summary" },
+        "emergencyContactName": { "type": "string", "description": "Emergency contact full name" },
+        "emergencyContactPhone": { "type": "string", "description": "Emergency contact phone number" },
+        "emergencyContactRelation": { "type": "string", "description": "Relationship to emergency contact" },
+        "homeAddress": { "type": "string", "description": "Saved residential home address" },
+        "businessAddress": { "type": "string", "description": "Saved business or office address" },
+        "preferredAddressType": { "type": "string", "description": "Preferred booking address type (HOME or BUSINESS)" },
+        "defaultLocation": { "type": "string", "description": "Default resolved service location" },
+        "fcmToken": { "type": "string", "description": "Firebase Cloud Messaging device registration token for real-time status push alerts" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation (FieldValue.serverTimestamp())" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update (FieldValue.serverTimestamp())" }
+      },
+      "required": ["userId", "displayName", "email", "createdAt", "updatedAt"]
+    },
+    "SecurityRequest": {
+      "title": "SecurityRequest",
+      "description": "On-demand, scheduled, or SOS dispatch request created by the user app and managed by the Command Center",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of requesting user" },
+        "securityTier": { "type": "string", "description": "Selected security tier title or code" },
+        "serviceType": { "type": "string", "description": "Category/code of security service from Command Center catalog" },
+        "serviceName": { "type": "string", "description": "Readable service title" },
+        "status": { "type": "string", "description": "Current dispatch lifecycle status (REQUESTED, DISPATCHED, EN_ROUTE, ON_SITE, COMPLETED, CANCELLED)" },
+        "isEmergency": { "type": "boolean", "description": "True if emergency SOS dispatch" },
+        "locationName": { "type": "string", "description": "Pickup or site address/name" },
+        "latitude": { "type": "number", "description": "GPS latitude coordinate" },
+        "longitude": { "type": "number", "description": "GPS longitude coordinate" },
+        "targetDateTime": { "type": "string", "description": "Scheduled date and time string" },
+        "isScheduled": { "type": "boolean", "description": "True if booked for future date" },
+        "durationHours": { "type": "integer", "description": "Requested shift duration in hours" },
+        "hourlyRate": { "type": "number", "description": "Hourly rate snapshot from Command Center pricing" },
+        "priceLabel": { "type": "string", "description": "Formatted price rate label from Command Center" },
+        "estimatedTotalLabel": { "type": "string", "description": "Calculated price estimate snapshot" },
+        "notes": { "type": "string", "description": "Optional special instructions or emergency telemetry notes" },
+        "guardName": { "type": "string", "description": "Command Center assigned security officer name" },
+        "guardBadge": { "type": "string", "description": "Command Center assigned officer badge identifier" },
+        "guardPhone": { "type": "string", "description": "Command Center assigned officer contact number" },
+        "guardVehicle": { "type": "string", "description": "Assigned patrol vehicle identifier" },
+        "deploymentId": { "type": "string", "description": "Linked Command Center deployment document ID" },
+        "guardLat": { "type": "number", "description": "Live GPS latitude of assigned guard" },
+        "guardLng": { "type": "number", "description": "Live GPS longitude of assigned guard" },
+        "etaMinutes": { "type": "integer", "description": "Estimated arrival time in minutes" },
+        "rating": { "type": "integer", "description": "User post-service star rating (1-5)" },
+        "feedbackComment": { "type": "string", "description": "Optional post-service feedback comment" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation (FieldValue.serverTimestamp())" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update (FieldValue.serverTimestamp())" }
+      },
+      "required": ["userId", "serviceType", "serviceName", "status", "isEmergency", "locationName", "latitude", "longitude", "targetDateTime", "isScheduled", "createdAt", "updatedAt"]
+    },
+    "CommandCenterTier": {
+      "title": "CommandCenterTier",
+      "description": "Security coverage tier managed by the standalone Command Center web app",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "description": "Tier code identifier (e.g. PERSONAL, PROPERTY, EVENT)" },
+        "title": { "type": "string", "description": "Display title" },
+        "subtitle": { "type": "string", "description": "Short summary" },
+        "startingRate": { "type": "string", "description": "Starting rate label configured in Command Center" },
+        "highlights": { "type": "string", "description": "Tier coverage highlights" },
+        "isRecommended": { "type": "boolean", "description": "Whether highlighted as top pick" },
+        "isActive": { "type": "boolean", "description": "Whether active and visible in user app" },
+        "sortOrder": { "type": "integer", "description": "Display sort order" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update" }
+      },
+      "required": ["code", "title", "isActive"]
+    },
+    "CommandCenterService": {
+      "title": "CommandCenterService",
+      "description": "Security service package & pricing managed by the standalone Command Center web app",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "description": "Unique service code" },
+        "title": { "type": "string", "description": "Service display title" },
+        "subtitle": { "type": "string", "description": "Short service subtitle" },
+        "description": { "type": "string", "description": "Detailed service description" },
+        "tierCode": { "type": "string", "description": "Associated tier code" },
+        "tierTitle": { "type": "string", "description": "Associated tier display name" },
+        "hourlyRate": { "type": "number", "description": "Numeric hourly rate for total calculations" },
+        "priceLabel": { "type": "string", "description": "Formatted pricing string (e.g. $65/hr)" },
+        "badgeLabel": { "type": "string", "description": "Classification badge label" },
+        "isArmed": { "type": "boolean", "description": "True if armed unit" },
+        "hasGpsTracking": { "type": "boolean", "description": "True if live GPS tracking supported" },
+        "isRecommended": { "type": "boolean", "description": "True if recommended by Command Center" },
+        "isEmergencyDefault": { "type": "boolean", "description": "True if mapped to SOS emergency alerts" },
+        "isActive": { "type": "boolean", "description": "True if currently bookable by users" },
+        "sortOrder": { "type": "integer", "description": "Display order" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update" }
+      },
+      "required": ["code", "title", "tierCode", "priceLabel", "isActive"]
+    },
+    "CommandCenterDeployment": {
+      "title": "CommandCenterDeployment",
+      "description": "Live officer deployment record assigned and tracked by the Command Center web app",
+      "type": "object",
+      "properties": {
+        "clientUserId": { "type": "string", "description": "Authenticated user ID receiving this deployment" },
+        "requestId": { "type": "string", "description": "Linked dispatch request ID" },
+        "guardName": { "type": "string", "description": "Assigned officer full name" },
+        "badgeNumber": { "type": "string", "description": "Officer badge identifier" },
+        "serviceType": { "type": "string", "description": "Assigned service role or package" },
+        "phone": { "type": "string", "description": "Officer contact phone number" },
+        "vehicle": { "type": "string", "description": "Assigned patrol vehicle" },
+        "bio": { "type": "string", "description": "Officer operational bio" },
+        "yearsOfExperience": { "type": "integer", "description": "Years of field experience" },
+        "rating": { "type": "number", "description": "Verified officer rating" },
+        "completedMissions": { "type": "integer", "description": "Completed mission count" },
+        "specializations": { "type": "array", "description": "Bounded list of officer specializations" },
+        "certifications": { "type": "array", "description": "Bounded list of officer certifications" },
+        "guardLat": { "type": "number", "description": "Live guard GPS latitude" },
+        "guardLng": { "type": "number", "description": "Live guard GPS longitude" },
+        "status": { "type": "string", "description": "Deployment operational status" },
+        "isRecommended": { "type": "boolean", "description": "Whether highlighted as recommended officer" },
+        "isActive": { "type": "boolean", "description": "True if deployment is currently active" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update" }
+      },
+      "required": ["clientUserId", "requestId", "guardName", "isActive"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Personal profile and emergency preferences for authenticated user"
+    },
+    "/users/{userId}/security_requests/{requestId}": {
+      "schema": "SecurityRequest",
+      "description": "Per-user security booking history and active dispatch mirror"
+    },
+    "/dispatches/{dispatchId}": {
+      "schema": "SecurityRequest",
+      "description": "Primary dispatch queue linking user app requests & SOS alerts with the standalone Command Center web app"
+    },
+    "/command_center_tiers/{tierId}": {
+      "schema": "CommandCenterTier",
+      "description": "Service tier definitions and starting rates managed by the Command Center"
+    },
+    "/command_center_services/{serviceId}": {
+      "schema": "CommandCenterService",
+      "description": "Bookable security services and pricing managed by the Command Center"
+    },
+    "/deployments/{deploymentId}": {
+      "schema": "CommandCenterDeployment",
+      "description": "Live officer deployments assigned to user dispatches by the Command Center"
+    }
+  }
+}

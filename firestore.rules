@@ -1,0 +1,353 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 150 &&
+             (!('phoneNumber' in data) || data.phoneNumber == null || (data.phoneNumber is string && data.phoneNumber.size() <= 30)) &&
+             (!('emergencyContact' in data) || data.emergencyContact == null || (data.emergencyContact is string && data.emergencyContact.size() <= 150)) &&
+             (!('emergencyContactName' in data) || data.emergencyContactName == null || (data.emergencyContactName is string && data.emergencyContactName.size() <= 100)) &&
+             (!('emergencyContactPhone' in data) || data.emergencyContactPhone == null || (data.emergencyContactPhone is string && data.emergencyContactPhone.size() <= 30)) &&
+             (!('emergencyContactRelation' in data) || data.emergencyContactRelation == null || (data.emergencyContactRelation is string && data.emergencyContactRelation.size() <= 50)) &&
+             (!('homeAddress' in data) || data.homeAddress == null || (data.homeAddress is string && data.homeAddress.size() <= 200)) &&
+             (!('businessAddress' in data) || data.businessAddress == null || (data.businessAddress is string && data.businessAddress.size() <= 200)) &&
+             (!('preferredAddressType' in data) || data.preferredAddressType == null || (data.preferredAddressType is string && data.preferredAddressType in ['HOME', 'BUSINESS'])) &&
+             (!('defaultLocation' in data) || data.defaultLocation == null || (data.defaultLocation is string && data.defaultLocation.size() <= 200)) &&
+             (!('fcmToken' in data) || data.fcmToken == null || (data.fcmToken is string && data.fcmToken.size() <= 512));
+    }
+
+    function isValidSecurityRequest(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             (!('securityTier' in data) || data.securityTier == null || (data.securityTier is string && data.securityTier.size() <= 100)) &&
+             data.serviceType is string && data.serviceType.size() > 0 && data.serviceType.size() <= 50 &&
+             data.serviceName is string && data.serviceName.size() > 0 && data.serviceName.size() <= 100 &&
+             data.status is string && data.status in ['REQUESTED', 'DISPATCHED', 'EN_ROUTE', 'ON_SITE', 'COMPLETED', 'CANCELLED'] &&
+             data.isEmergency is bool &&
+             data.locationName is string && data.locationName.size() > 0 && data.locationName.size() <= 200 &&
+             (data.latitude is number || data.latitude is float) &&
+             (data.longitude is number || data.longitude is float) &&
+             data.targetDateTime is string && data.targetDateTime.size() <= 100 &&
+             data.isScheduled is bool &&
+             (!('durationHours' in data) || data.durationHours == null || (data.durationHours is int && data.durationHours >= 1 && data.durationHours <= 720)) &&
+             (!('hourlyRate' in data) || data.hourlyRate == null || ((data.hourlyRate is number || data.hourlyRate is float) && data.hourlyRate >= 0)) &&
+             (!('priceLabel' in data) || data.priceLabel == null || (data.priceLabel is string && data.priceLabel.size() <= 80)) &&
+             (!('estimatedTotalLabel' in data) || data.estimatedTotalLabel == null || (data.estimatedTotalLabel is string && data.estimatedTotalLabel.size() <= 100)) &&
+             (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 1000)) &&
+             (!('guardName' in data) || data.guardName == null || (data.guardName is string && data.guardName.size() <= 100)) &&
+             (!('guardBadge' in data) || data.guardBadge == null || (data.guardBadge is string && data.guardBadge.size() <= 50)) &&
+             (!('guardPhone' in data) || data.guardPhone == null || (data.guardPhone is string && data.guardPhone.size() <= 30)) &&
+             (!('guardVehicle' in data) || data.guardVehicle == null || (data.guardVehicle is string && data.guardVehicle.size() <= 100)) &&
+             (!('deploymentId' in data) || data.deploymentId == null || (data.deploymentId is string && data.deploymentId.size() <= 128)) &&
+             (!('guardLat' in data) || data.guardLat == null || data.guardLat is number || data.guardLat is float) &&
+             (!('guardLng' in data) || data.guardLng == null || data.guardLng is number || data.guardLng is float) &&
+             (!('etaMinutes' in data) || data.etaMinutes == null || (data.etaMinutes is int && data.etaMinutes >= 0)) &&
+             (!('rating' in data) || data.rating == null || (data.rating is int && data.rating >= 1 && data.rating <= 5)) &&
+             (!('feedbackComment' in data) || data.feedbackComment == null || (data.feedbackComment is string && data.feedbackComment.size() <= 1000));
+    }
+
+    function hasNoClientAssignedGuard(data) {
+      return (!('guardName' in data) || data.guardName == null) &&
+             (!('guardBadge' in data) || data.guardBadge == null) &&
+             (!('guardPhone' in data) || data.guardPhone == null) &&
+             (!('guardVehicle' in data) || data.guardVehicle == null) &&
+             (!('deploymentId' in data) || data.deploymentId == null) &&
+             (!('guardLat' in data) || data.guardLat == null) &&
+             (!('guardLng' in data) || data.guardLng == null) &&
+             (!('etaMinutes' in data) || data.etaMinutes == null);
+    }
+
+    function isValidCommandCenterTier(data) {
+      return data.code is string && data.code.size() > 0 && data.code.size() <= 50 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             (!('subtitle' in data) || data.subtitle == null || (data.subtitle is string && data.subtitle.size() <= 200)) &&
+             (!('startingRate' in data) || data.startingRate == null || (data.startingRate is string && data.startingRate.size() <= 50)) &&
+             (!('highlights' in data) || data.highlights == null || (data.highlights is string && data.highlights.size() <= 300)) &&
+             (!('isRecommended' in data) || data.isRecommended is bool) &&
+             data.isActive is bool &&
+             (!('sortOrder' in data) || data.sortOrder is int) &&
+             (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp);
+    }
+
+    function isValidCommandCenterService(data) {
+      return data.code is string && data.code.size() > 0 && data.code.size() <= 50 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             (!('subtitle' in data) || data.subtitle == null || (data.subtitle is string && data.subtitle.size() <= 200)) &&
+             (!('description' in data) || data.description == null || (data.description is string && data.description.size() <= 1000)) &&
+             data.tierCode is string && data.tierCode.size() > 0 && data.tierCode.size() <= 50 &&
+             (!('tierTitle' in data) || data.tierTitle == null || (data.tierTitle is string && data.tierTitle.size() <= 100)) &&
+             (!('hourlyRate' in data) || data.hourlyRate == null || ((data.hourlyRate is number || data.hourlyRate is float) && data.hourlyRate >= 0)) &&
+             data.priceLabel is string && data.priceLabel.size() > 0 && data.priceLabel.size() <= 80 &&
+             (!('badgeLabel' in data) || data.badgeLabel == null || (data.badgeLabel is string && data.badgeLabel.size() <= 50)) &&
+             (!('isArmed' in data) || data.isArmed is bool) &&
+             (!('hasGpsTracking' in data) || data.hasGpsTracking is bool) &&
+             (!('isRecommended' in data) || data.isRecommended is bool) &&
+             (!('isEmergencyDefault' in data) || data.isEmergencyDefault is bool) &&
+             data.isActive is bool &&
+             (!('sortOrder' in data) || data.sortOrder is int) &&
+             (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp);
+    }
+
+    function isValidCommandCenterDeployment(data) {
+      return data.clientUserId is string && data.clientUserId.size() > 0 && data.clientUserId.size() <= 128 &&
+             data.requestId is string && data.requestId.size() > 0 && data.requestId.size() <= 128 &&
+             data.guardName is string && data.guardName.size() > 0 && data.guardName.size() <= 100 &&
+             (!('badgeNumber' in data) || data.badgeNumber == null || (data.badgeNumber is string && data.badgeNumber.size() <= 50)) &&
+             (!('serviceType' in data) || data.serviceType == null || (data.serviceType is string && data.serviceType.size() <= 100)) &&
+             (!('phone' in data) || data.phone == null || (data.phone is string && data.phone.size() <= 30)) &&
+             (!('vehicle' in data) || data.vehicle == null || (data.vehicle is string && data.vehicle.size() <= 100)) &&
+             (!('bio' in data) || data.bio == null || (data.bio is string && data.bio.size() <= 1000)) &&
+             (!('yearsOfExperience' in data) || data.yearsOfExperience == null || (data.yearsOfExperience is int && data.yearsOfExperience >= 0 && data.yearsOfExperience <= 80)) &&
+             (!('rating' in data) || data.rating == null || ((data.rating is number || data.rating is float) && data.rating >= 0 && data.rating <= 5)) &&
+             (!('completedMissions' in data) || data.completedMissions == null || (data.completedMissions is int && data.completedMissions >= 0)) &&
+             (!('specializations' in data) || data.specializations == null || (data.specializations is list && data.specializations.size() <= 20)) &&
+             (!('certifications' in data) || data.certifications == null || (data.certifications is list && data.certifications.size() <= 20)) &&
+             (!('guardLat' in data) || data.guardLat == null || data.guardLat is number || data.guardLat is float) &&
+             (!('guardLng' in data) || data.guardLng == null || data.guardLng is number || data.guardLng is float) &&
+             (!('status' in data) || data.status == null || (data.status is string && data.status in ['DISPATCHED', 'EN_ROUTE', 'ON_SITE', 'COMPLETED', 'CANCELLED'])) &&
+             (!('isRecommended' in data) || data.isRecommended is bool) &&
+             data.isActive is bool &&
+             (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp);
+    }
+
+    // Command Center Operator / Admin registry
+    match /admins/{adminId} {
+      allow get: if isOwner(adminId);
+      allow list, create, update, delete: if false;
+    }
+
+    // Command Center managed coverage tiers (prices & tiers)
+    match /command_center_tiers/{tierId} {
+      allow get, list: if isAdmin() || (isSignedIn() && resource.data.isActive == true);
+      allow create, update: if isAdmin() &&
+                               isValidId(tierId) &&
+                               incoming().keys().hasAll(['code', 'title', 'isActive']) &&
+                               incoming().keys().hasOnly([
+                                 'code', 'title', 'subtitle', 'startingRate', 'highlights',
+                                 'isRecommended', 'isActive', 'sortOrder', 'updatedAt'
+                               ]) &&
+                               isValidCommandCenterTier(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Command Center managed services & dynamic pricing
+    match /command_center_services/{serviceId} {
+      allow get, list: if isAdmin() || (isSignedIn() && resource.data.isActive == true);
+      allow create, update: if isAdmin() &&
+                               isValidId(serviceId) &&
+                               incoming().keys().hasAll(['code', 'title', 'tierCode', 'priceLabel', 'isActive']) &&
+                               incoming().keys().hasOnly([
+                                 'code', 'title', 'subtitle', 'description', 'tierCode', 'tierTitle',
+                                 'hourlyRate', 'priceLabel', 'badgeLabel', 'isArmed', 'hasGpsTracking',
+                                 'isRecommended', 'isEmergencyDefault', 'isActive', 'sortOrder', 'updatedAt'
+                               ]) &&
+                               isValidCommandCenterService(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Primary shared dispatch queue between user app and standalone Command Center web app
+    match /dispatches/{dispatchId} {
+      allow get: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+
+      allow create: if isValidId(dispatchId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'serviceType', 'serviceName', 'status', 'isEmergency',
+                         'locationName', 'latitude', 'longitude', 'targetDateTime', 'isScheduled',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'securityTier', 'serviceType', 'serviceName', 'status', 'isEmergency',
+                         'locationName', 'latitude', 'longitude', 'targetDateTime', 'isScheduled',
+                         'durationHours', 'hourlyRate', 'priceLabel', 'estimatedTotalLabel', 'notes',
+                         'guardName', 'guardBadge', 'guardPhone', 'guardVehicle', 'deploymentId',
+                         'guardLat', 'guardLng', 'etaMinutes', 'rating', 'feedbackComment',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidSecurityRequest(incoming()) &&
+                       (
+                         isAdmin() ||
+                         (
+                           isSignedIn() &&
+                           incoming().userId == request.auth.uid &&
+                           incoming().status == 'REQUESTED' &&
+                           hasNoClientAssignedGuard(incoming())
+                         )
+                       );
+
+      allow update: if isValidId(dispatchId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidSecurityRequest(incoming()) &&
+                       (
+                         (
+                           isAdmin() &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'status', 'notes', 'securityTier', 'serviceType', 'serviceName',
+                             'hourlyRate', 'priceLabel', 'estimatedTotalLabel',
+                             'guardName', 'guardBadge', 'guardPhone', 'guardVehicle', 'deploymentId',
+                             'guardLat', 'guardLng', 'etaMinutes', 'updatedAt'
+                           ])
+                         ) ||
+                         (
+                           isSignedIn() &&
+                           existing().userId == request.auth.uid &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'status', 'notes', 'locationName', 'latitude', 'longitude',
+                             'rating', 'feedbackComment', 'updatedAt'
+                           ]) &&
+                           (
+                             !('status' in incoming().diff(existing()).affectedKeys()) ||
+                             incoming().status == 'CANCELLED'
+                           )
+                         )
+                       );
+
+      allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid && isValidId(dispatchId));
+    }
+
+    // Live officer deployments assigned and updated by Command Center
+    match /deployments/{deploymentId} {
+      allow get, list: if isAdmin() || (isSignedIn() && resource.data.clientUserId == request.auth.uid);
+      allow create, update: if isAdmin() &&
+                               isValidId(deploymentId) &&
+                               incoming().keys().hasAll(['clientUserId', 'requestId', 'guardName', 'isActive']) &&
+                               incoming().keys().hasOnly([
+                                 'clientUserId', 'requestId', 'guardName', 'badgeNumber', 'serviceType',
+                                 'phone', 'vehicle', 'bio', 'yearsOfExperience', 'rating', 'completedMissions',
+                                 'specializations', 'certifications', 'guardLat', 'guardLng', 'status',
+                                 'isRecommended', 'isActive', 'updatedAt'
+                               ]) &&
+                               isValidCommandCenterDeployment(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+
+      allow create: if isOwner(userId) &&
+                       incoming().userId == userId &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'email', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'email', 'phoneNumber',
+                         'emergencyContact', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation',
+                         'homeAddress', 'businessAddress', 'preferredAddressType', 'defaultLocation', 'fcmToken',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       incoming().userId == userId &&
+                       (!('userId' in existing()) || incoming().userId == existing().userId) &&
+                       (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt) &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'displayName', 'phoneNumber',
+                         'emergencyContact', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation',
+                         'homeAddress', 'businessAddress', 'preferredAddressType', 'defaultLocation', 'fcmToken',
+                         'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId);
+
+      match /security_requests/{requestId} {
+        allow get, list: if isOwner(userId) || isAdmin();
+
+        allow create: if isValidId(requestId) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll([
+                           'userId', 'serviceType', 'serviceName', 'status', 'isEmergency',
+                           'locationName', 'latitude', 'longitude', 'targetDateTime', 'isScheduled',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'securityTier', 'serviceType', 'serviceName', 'status', 'isEmergency',
+                           'locationName', 'latitude', 'longitude', 'targetDateTime', 'isScheduled',
+                           'durationHours', 'hourlyRate', 'priceLabel', 'estimatedTotalLabel', 'notes',
+                           'guardName', 'guardBadge', 'guardPhone', 'guardVehicle', 'deploymentId',
+                           'guardLat', 'guardLng', 'etaMinutes', 'rating', 'feedbackComment',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidSecurityRequest(incoming()) &&
+                         (
+                           isAdmin() ||
+                           (
+                             isOwner(userId) &&
+                             incoming().status == 'REQUESTED' &&
+                             hasNoClientAssignedGuard(incoming())
+                           )
+                         );
+
+        allow update: if isValidId(requestId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidSecurityRequest(incoming()) &&
+                         (
+                           (
+                             isAdmin() &&
+                             incoming().diff(existing()).affectedKeys().hasOnly([
+                               'status', 'notes', 'securityTier', 'serviceType', 'serviceName',
+                               'hourlyRate', 'priceLabel', 'estimatedTotalLabel',
+                               'guardName', 'guardBadge', 'guardPhone', 'guardVehicle', 'deploymentId',
+                               'guardLat', 'guardLng', 'etaMinutes', 'updatedAt'
+                             ])
+                           ) ||
+                           (
+                             isOwner(userId) &&
+                             incoming().diff(existing()).affectedKeys().hasOnly([
+                               'status', 'notes', 'locationName', 'latitude', 'longitude',
+                               'rating', 'feedbackComment', 'updatedAt'
+                             ]) &&
+                             (
+                               !('status' in incoming().diff(existing()).affectedKeys()) ||
+                               incoming().status == 'CANCELLED'
+                             )
+                           )
+                         );
+
+        allow delete: if (isOwner(userId) || isAdmin()) && isValidId(requestId);
+      }
+    }
+  }
+}
